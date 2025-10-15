@@ -1,0 +1,61 @@
+version: '3.9'
+
+# networks
+# create a network 'guacamole_net' in mode 'bridged'
+networks:
+  guacamole_net:
+    driver: bridge
+
+# services
+services:
+  # guacd
+  guacd:
+    container_name: guacamole_backend
+    image: guacamole/guacd:latest
+    networks:
+      guacamole_net:
+    restart: always
+    volumes:
+    - ./drive:/drive:rw
+    - ./record:/var/lib/guacamole/recordings:rw
+
+  # postgres
+  postgres:
+    container_name: guacamole_database
+    environment:
+      PGDATA: /var/lib/postgresql/data/guacamole
+      POSTGRES_DB: guacamole_db
+      POSTGRES_PASSWORD: 'Raider95f'
+      POSTGRES_USER: 'guac_user'
+    image: postgres:latest
+    networks:
+      guacamole_net:
+    restart: always
+    volumes:
+    - ./init:/docker-entrypoint-initdb.d:ro
+    - ./data:/var/lib/postgresql/data:rw
+    
+  # guacamole
+  guacamole:
+    container_name: guacamole_frontend
+    depends_on:
+    - guacd
+    - postgres
+    environment:
+      GUACD_HOSTNAME: guacd
+      POSTGRESQL_DATABASE: guacamole_db
+      POSTGRESQL_HOSTNAME: postgres
+      POSTGRESQL_PASSWORD: 'Raider95f'
+      POSTGRESQL_USER: 'guac_user'
+      POSTGRESQL_AUTO_CREATE_ACCOUNTS: true
+    image: guacamole/guacamole:latest
+    links:
+    - guacd
+    networks:
+      - guacamole_net
+    ports:
+      - "8080:8080"
+    restart: always
+    volumes:
+    - ./drive:/drive:rw
+    - ./record:/var/lib/guacamole/recordings
